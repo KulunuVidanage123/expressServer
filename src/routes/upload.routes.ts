@@ -24,7 +24,7 @@ const upload = multer({
   },
 });
 
-// ✅ Configure S3 client with explicit region
+// Configure S3 client with explicit region
 const s3 = new S3({
   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
@@ -70,7 +70,7 @@ router.post('/upload-image', upload.single('image'), async (req, res) => {
     res.json({ imageUrl: uploadResult.Location });
 
   } catch (error: any) {
-    // 🔥 CRITICAL: Log the FULL error
+    // CRITICAL: Log the FULL error
     console.error('❌ S3 UPLOAD FAILED:');
     console.error('Message:', error.message);
     console.error('Stack:', error.stack);

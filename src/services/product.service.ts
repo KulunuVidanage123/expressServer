@@ -1,5 +1,5 @@
 import { IProduct } from '../models/product.model';
-import { ProductModel } from '../models/product.model';
+import { Product as ProductModel } from '../models/product.model';
 
 export const createProduct = async (productData: Partial<IProduct>): Promise<IProduct> => {
   const newProduct = new ProductModel(productData);
