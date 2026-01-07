@@ -1,64 +1,49 @@
 // src/routes/product.routes.ts
 import { Router } from 'express';
 import { Product as ProductModel } from '../models/product.model';
+import { authenticateToken } from '../utils/auth'; 
 
 const router = Router();
 
 /**
  * @route   GET /api/product
  * @desc    Get all products
- * @access  Public
+ * @access  Private (requires valid JWT)
  */
-router.get('/', async (req, res) => {
+router.get('/', authenticateToken, async (req, res) => {
   try {
     const products = await ProductModel.find().sort({ createdAt: -1 });
-    res.json({
-      success: true,
-      data: products,
-      total: products.length
-    });
+    res.json(products);
   } catch (error) {
     console.error('Error fetching products:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch products'
-    });
+    res.status(500).json({ message: 'Failed to fetch products' });
   }
 });
 
 /**
  * @route   GET /api/product/:id
  * @desc    Get a single product by ID
- * @access  Public
+ * @access  Private
  */
-router.get('/:id', async (req, res) => {
+router.get('/:id', authenticateToken, async (req, res) => {
   try {
     const product = await ProductModel.findById(req.params.id);
     if (!product) {
-      return res.status(404).json({
-        success: false,
-        message: 'Product not found'
-      });
+      return res.status(404).json({ message: 'Product not found' });
     }
-    res.json({
-      success: true,
-      data: product
-    });
+    res.json(product);
   } catch (error) {
     console.error('Error fetching product:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch product'
-    });
+    res.status(500).json({ message: 'Failed to fetch product' });
   }
 });
 
 /**
  * @route   POST /api/product
  * @desc    Create a new product
- * @access  Public
+ * @access  Private
  */
-router.post('/', async (req, res) => {
+router.post('/', authenticateToken, async (req, res) => {
   try {
     const {
       title,
@@ -71,12 +56,8 @@ router.post('/', async (req, res) => {
       imageUrl
     } = req.body;
 
-    // Basic validation
-    if (!title || !brand || !price || !category || stock === undefined || rating === undefined || !imageUrl) {
-      return res.status(400).json({
-        success: false,
-        message: 'Missing required fields'
-      });
+    if (!title || !brand || price == null || !category || stock == null || rating == null || !imageUrl) {
+      return res.status(400).json({ message: 'Missing required fields' });
     }
 
     const product = new ProductModel({
@@ -91,31 +72,22 @@ router.post('/', async (req, res) => {
     });
 
     const savedProduct = await product.save();
-    res.status(201).json({
-      success: true,
-      data: savedProduct
-    });
+    res.status(201).json(savedProduct);
   } catch (error: any) {
     console.error('Error creating product:', error);
     if (error.name === 'ValidationError') {
-      return res.status(400).json({
-        success: false,
-        message: Object.values(error.errors).map((err: any) => err.message).join(', ')
-      });
+      return res.status(400).json({ message: 'Validation failed' });
     }
-    res.status(500).json({
-      success: false,
-      message: 'Failed to create product'
-    });
+    res.status(500).json({ message: 'Failed to create product' });
   }
 });
 
 /**
  * @route   PUT /api/product/:id
  * @desc    Update a product by ID
- * @access  Public
+ * @access  Private
  */
-router.put('/:id', async (req, res) => {
+router.put('/:id', authenticateToken, async (req, res) => {
   try {
     const {
       title,
@@ -145,55 +117,34 @@ router.put('/:id', async (req, res) => {
     );
 
     if (!product) {
-      return res.status(404).json({
-        success: false,
-        message: 'Product not found'
-      });
+      return res.status(404).json({ message: 'Product not found' });
     }
 
-    res.json({
-      success: true,
-      data: product
-    });
+    res.json(product);
   } catch (error: any) {
     console.error('Error updating product:', error);
     if (error.name === 'ValidationError') {
-      return res.status(400).json({
-        success: false,
-        message: Object.values(error.errors).map((err: any) => err.message).join(', ')
-      });
+      return res.status(400).json({ message: 'Validation failed' });
     }
-    res.status(500).json({
-      success: false,
-      message: 'Failed to update product'
-    });
+    res.status(500).json({ message: 'Failed to update product' });
   }
 });
 
 /**
  * @route   DELETE /api/product/:id
  * @desc    Delete a product by ID
- * @access  Public
+ * @access  Private
  */
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authenticateToken, async (req, res) => {
   try {
     const product = await ProductModel.findByIdAndDelete(req.params.id);
     if (!product) {
-      return res.status(404).json({
-        success: false,
-        message: 'Product not found'
-      });
+      return res.status(404).json({ message: 'Product not found' });
     }
-    res.json({
-      success: true,
-      message: 'Product deleted successfully'
-    });
+    res.json({ message: 'Product deleted successfully' });
   } catch (error) {
     console.error('Error deleting product:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to delete product'
-    });
+    res.status(500).json({ message: 'Failed to delete product' });
   }
 });
 

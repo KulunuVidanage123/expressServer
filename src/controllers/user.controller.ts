@@ -1,67 +1,94 @@
+// src/controllers/user.controller.ts
 import { Request, Response } from 'express';
 import { createUser, getAllUsers, getUserById, updateUser, deleteUser } from '../services/user.service';
-import { SUCCESS, ERROR } from '../utils/helper';
+
+const sendSuccess = (res: Response, data: any, statusCode = 200) => {
+  res.status(statusCode).json(data);
+};
+
+const sendError = (res: Response, message: string, statusCode = 400) => {
+  res.status(statusCode).json({ message });
+};
 
 export const registerUser = async (req: Request, res: Response) => {
   try {
     const user = await createUser(req.body);
-    SUCCESS(res, { code: 201, message: 'User registered successfully' }, user);
+    sendSuccess(res, user, 201);
   } catch (error: any) {
-    ERROR(res, { statusCode: 400, message: error.message });
+    console.error('🚨 User Registration Error:', error);
+    sendError(res, error.message || 'Registration failed', 400);
   }
 };
 
 export const getUsers = async (req: Request, res: Response) => {
   try {
     const users = await getAllUsers();
-    SUCCESS(res, { code: 200, message: 'Users fetched successfully' }, users);
+    
+    if (!Array.isArray(users)) {
+      console.error('❌ getAllUsers() did not return an array:', users);
+      return sendError(res, 'Invalid user data format', 500);
+    }
+
+    sendSuccess(res, users);
   } catch (error: any) {
-    ERROR(res, { statusCode: 500, message: error.message });
+    console.error('🚨 Fetch Users Error:', error);
+    sendError(res, error.message || 'Failed to fetch users', 500);
   }
 };
 
 export const getUser = async (req: Request, res: Response) => {
   try {
-    const user = await getUserById(req.params.id);
-    if (!user) {
-      return ERROR(res, { statusCode: 404, message: 'User not found' });
+    const { id } = req.params;
+    
+    if (!id) {
+      return sendError(res, 'User ID is required', 400);
     }
-    SUCCESS(res, { code: 200, message: 'User fetched successfully' }, user);
+
+    const user = await getUserById(id);
+    if (!user) {
+      return sendError(res, 'User not found', 404);
+    }
+    sendSuccess(res, user);
   } catch (error: any) {
-    ERROR(res, { statusCode: 500, message: error.message });
+    console.error('🚨 Fetch User Error:', error);
+    sendError(res, error.message || 'Failed to fetch user', 500);
   }
 };
 
 export const updateUserProfile = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const updatedUser = await updateUser(id, req.body); // ← passes partial data
-
-    if (!updatedUser) {
-      return ERROR(res, { statusCode: 404, message: 'User not found' });
+    
+    if (!id) {
+      return sendError(res, 'User ID is required', 400);
     }
 
-    SUCCESS(res, { code: 200, message: 'User updated successfully' }, updatedUser);
+    const updatedUser = await updateUser(id, req.body);
+    if (!updatedUser) {
+      return sendError(res, 'User not found', 404);
+    }
+    sendSuccess(res, updatedUser);
   } catch (error: any) {
-    // Log the actual error for debugging
-    console.error('Update error:', error);
-    ERROR(res, { statusCode: 400, message: error.message || 'Failed to update user' });
+    console.error('🚨 Update User Error:', error);
+    sendError(res, error.message || 'Failed to update user', 400);
   }
 };
 
 export const deleteUserProfile = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const user = await deleteUser(id);
-
-    if (!user) {
-      return ERROR(res, { statusCode: 404, message: 'User not found' });
+    
+    if (!id) {
+      return sendError(res, 'User ID is required', 400);
     }
 
-    SUCCESS(res, { code: 200, message: 'User deleted successfully' }, user);
+    const user = await deleteUser(id);
+    if (!user) {
+      return sendError(res, 'User not found', 404);
+    }
+    sendSuccess(res, { message: 'User deleted successfully' });
   } catch (error: any) {
-    // Log the actual error for debugging
-    console.error('Delete error:', error);
-    ERROR(res, { statusCode: 500, message: error.message || 'Failed to delete user' });
+    console.error('🚨 Delete User Error:', error);
+    sendError(res, error.message || 'Failed to delete user', 500);
   }
 };
