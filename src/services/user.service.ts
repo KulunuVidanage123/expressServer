@@ -30,13 +30,13 @@ export const createUser = async (userData: Partial<IUser>): Promise<IUser> => {
   return await newUser.save();
 };
 
-export const getAllUsers = async (): Promise<IUser[]> => {
+export const getAllUsers = async (filter: Record<string, any> = {}): Promise<IUser[]> => {
   try {
-    const users = await UserModel.find().select('-password');
-    return users; 
+    const users = await UserModel.find(filter).select('-password');
+    return users;
   } catch (error) {
     console.error('🔥 Service: getAllUsers failed', error);
-    throw error; 
+    throw error;
   }
 };
 

@@ -22,7 +22,7 @@ export const registerUser = async (req: Request, res: Response) => {
 
 export const getUsers = async (req: Request, res: Response) => {
   try {
-    const users = await getAllUsers();
+    const users = await getAllUsers({ source: 'dashboard' });
     
     if (!Array.isArray(users)) {
       console.error('❌ getAllUsers() did not return an array:', users);
@@ -31,7 +31,7 @@ export const getUsers = async (req: Request, res: Response) => {
 
     sendSuccess(res, users);
   } catch (error: any) {
-    console.error('🚨 Fetch Users Error:', error);
+    console.error('🚨 Fetch Dashboard Users Error:', error);
     sendError(res, error.message || 'Failed to fetch users', 500);
   }
 };
