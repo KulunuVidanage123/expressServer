@@ -2,7 +2,6 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-// Validate critical environment variables
 const requiredEnvVars = ['MONGO_URI', 'JWT_SECRET'] as const;
 for (const envVar of requiredEnvVars) {
   if (!process.env[envVar]) {
@@ -22,6 +21,7 @@ import productRoutes from './src/routes/product.routes';
 import cloudinaryRoutes from './src/routes/cloudinary.routes';
 import uploadRoutes from './src/routes/upload.routes';
 import authRoutes from './src/routes/auth.routes';
+import inquiryRoutes from './src/routes/inquiry.routes';
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3000', 10);
@@ -47,11 +47,11 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/product', productRoutes);
-app.use('/api/products', productRoutes); // alias
+app.use('/api/products', productRoutes); 
 app.use('/api', cloudinaryRoutes);
 app.use('/api', uploadRoutes);
+app.use('/api/inquiry', inquiryRoutes);
 
-// Health check
 app.get('/health', (req: Request, res: Response) => {
   res.status(200).json({
     status: 'OK',
@@ -60,13 +60,11 @@ app.get('/health', (req: Request, res: Response) => {
   });
 });
 
-// Global error handler
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   console.error('💥 Global error:', err);
   res.status(500).json({ error: 'Internal server error', message: err.message });
 });
 
-// 404 handler
 app.use((req: Request, res: Response) => {
   res.status(404).json({ error: 'Route not found', path: req.originalUrl });
 });
