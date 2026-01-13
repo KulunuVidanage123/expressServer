@@ -1,19 +1,32 @@
 // src/routes/auth.routes.ts
-import { Router, Request, Response, NextFunction } from 'express';
+import { Router, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import UserModel from '../models/user.model';
 import { getEnvVar } from '../config/env';
-import { authenticateToken } from '../utils/auth'; 
+import { authenticateToken } from '../utils/auth';
+import nodemailer from 'nodemailer'; 
 
 const router = Router();
 
 const JWT_SECRET = getEnvVar('JWT_SECRET');
-const JWT_EXPIRES_IN = parseInt(process.env.JWT_EXPIRES_IN || '604800', 10); 
+const JWT_EXPIRES_IN = parseInt(process.env.JWT_EXPIRES_IN || '604800', 10);
 
-/**
- * Generates a JWT token with strict payload validation
- */
+const SMTP_HOST = process.env.SMTP_HOST || 'smtp.gmail.com';
+const SMTP_PORT = parseInt(process.env.SMTP_PORT || '587', 10);
+const SMTP_USER = process.env.SMTP_USER || '';
+const SMTP_PASS = process.env.SMTP_PASS || '';
+
+const transporter = nodemailer.createTransport({
+  host: SMTP_HOST,
+  port: SMTP_PORT,
+  secure: false, 
+  auth: {
+    user: SMTP_USER,
+    pass: SMTP_PASS,
+  },
+});
+
 const generateToken = (payload: { id: string; email: string; role: string }): string => {
   if (!payload.id || typeof payload.id !== 'string') {
     throw new Error('Invalid user ID for token generation');
@@ -21,22 +34,45 @@ const generateToken = (payload: { id: string; email: string; role: string }): st
   return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 };
 
-/**
- * @route   POST /api/auth/register
- * @desc    Register a new user (minimal auth-only fields)
- * @access  Public
- */
+const generateSecurePassword = (): string => {
+  return Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8); 
+};
+
+const sendPasswordEmail = async (email: string, password: string): Promise<void> => {
+  await transporter.sendMail({
+    from: SMTP_USER,
+    to: email,
+    subject: 'Your Account Password - APITable',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h2 style="color: #333;">Welcome to APITable!</h2>
+        <p>Your account has been created successfully.</p>
+        <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;">
+          <p><strong>Email:</strong> ${email}</p>
+          <p><strong>Password:</strong> <code style="background: #e9ecef; padding: 2px 6px; border-radius: 3px;">${password}</code></p>
+        </div>
+        <p><strong>Important:</strong> Please log in and change your password immediately for security.</p>
+        <p>Thank you for using our platform!</p>
+        <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
+        <p style="color: #6c757d; font-size: 12px;">
+          This is an automated message. Please do not reply to this email.
+        </p>
+      </div>
+    `,
+  });
+};
+
 router.post('/register', async (req: Request, res: Response) => {
   try {
-    const { email, password, role = 'user' } = req.body;
+    const { email, role = 'user' } = req.body; 
 
-    if (!email || !password) {
-      return res.status(400).json({ message: 'Email and password are required' });
+    if (!email) {
+      return res.status(400).json({ message: 'Email is required' });
     }
 
-    const validRoles = ['user', 'admin', 'manager'];
+    const validRoles = ['user']; 
     if (!validRoles.includes(role)) {
-      return res.status(400).json({ message: 'Invalid role. Must be one of: user, admin, manager' });
+      return res.status(400).json({ message: 'Invalid role. Public registration only allows "user" role' });
     }
 
     const normalizedEmail = email.toLowerCase().trim();
@@ -46,42 +82,32 @@ router.post('/register', async (req: Request, res: Response) => {
       return res.status(409).json({ message: 'User with this email already exists' });
     }
 
+    const generatedPassword = generateSecurePassword();
+
     const user = new UserModel({
       email: normalizedEmail,
-      password, 
+      password: generatedPassword, 
       role,
     });
 
     await user.save();
 
-    const userId = user._id.toString();
-
-    const token = generateToken({
-      id: userId,
-      email: user.email,
-      role: user.role,
-    });
+    await sendPasswordEmail(normalizedEmail, generatedPassword);
 
     res.status(201).json({
-      message: 'User registered successfully',
-      token,
-      user: {
-        id: userId,
-        email: user.email,
-        role: user.role,
-      },
+      message: 'User registered successfully! Check your email for your password.'
     });
   } catch (error: any) {
     console.error('🚨 Registration error:', error);
-    res.status(500).json({ message: error.message || 'Server error during registration' });
+    
+    if (error.message?.includes('Email')) {
+      return res.status(500).json({ message: 'Registration successful but failed to send email. Contact support.' });
+    }
+    
+    res.status(500).json({ message: 'Server error during registration' });
   }
 });
 
-/**
- * @route   POST /api/auth/login
- * @desc    Authenticate user and return JWT
- * @access  Public
- */
 router.post('/login', async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
@@ -103,7 +129,6 @@ router.post('/login', async (req: Request, res: Response) => {
     }
 
     const userId = user._id.toString();
-
     const token = generateToken({
       id: userId,
       email: user.email,
@@ -125,11 +150,6 @@ router.post('/login', async (req: Request, res: Response) => {
   }
 });
 
-/**
- * @route   GET /api/auth/me
- * @desc    Validate JWT and return current user
- * @access  Private (requires valid JWT)
- */
 router.get('/me', authenticateToken, async (req: any, res: Response) => {
   try {
     const user = await UserModel.findById(req.user.id).select('-password');
