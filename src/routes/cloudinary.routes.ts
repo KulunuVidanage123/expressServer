@@ -5,25 +5,21 @@ import cloudinary from '../config/cloudinary';
 
 const router = Router();
 
-// Configure multer for memory storage
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
-// Define the expected shape of Cloudinary's upload response
 interface CloudinaryUploadResult {
   secure_url: string;
   public_id: string;
-  [key: string]: any; // allow other fields
+  [key: string]: any; 
 }
 
-// Upload image to Cloudinary
 router.post('/upload-cloudinary', upload.single('image'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ success: false, message: 'No image file provided' });
     }
 
-    // Upload to Cloudinary
     const result = await new Promise<CloudinaryUploadResult>((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
         { folder: 'products' },
@@ -36,7 +32,6 @@ router.post('/upload-cloudinary', upload.single('image'), async (req, res) => {
         }
       );
 
-      // Pipe buffer to Cloudinary stream
       const bufferStream = require('stream').Readable.from(req.file.buffer);
       bufferStream.pipe(uploadStream);
     });

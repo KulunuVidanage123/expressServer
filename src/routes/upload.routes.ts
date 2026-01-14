@@ -9,7 +9,6 @@ dotenv.config();
 
 const router = Router();
 
-// Configure Multer
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
@@ -24,16 +23,14 @@ const upload = multer({
   },
 });
 
-// Configure S3 client with explicit region
 const s3 = new S3({
   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-  region: process.env.AWS_REGION, // e.g., 'us-east-1'
+  region: process.env.AWS_REGION, 
 });
 
 router.post('/upload-image', upload.single('image'), async (req, res) => {
   try {
-    // 🔥 Debug: Log incoming request
     console.log('📸 Upload request received');
     console.log('📁 File received:', !!req.file);
     if (req.file) {
@@ -61,7 +58,6 @@ router.post('/upload-image', upload.single('image'), async (req, res) => {
       Key: key,
       Body: file.buffer,
       ContentType: file.mimetype,
-      // ACL: 'public-read',
     };
 
     const uploadResult = await s3.upload(params).promise();
@@ -70,7 +66,6 @@ router.post('/upload-image', upload.single('image'), async (req, res) => {
     res.json({ imageUrl: uploadResult.Location });
 
   } catch (error: any) {
-    // CRITICAL: Log the FULL error
     console.error('❌ S3 UPLOAD FAILED:');
     console.error('Message:', error.message);
     console.error('Stack:', error.stack);

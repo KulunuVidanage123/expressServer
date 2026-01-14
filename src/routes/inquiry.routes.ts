@@ -24,12 +24,10 @@ router.post('/', async (req, res) => {
   try {
     const { name, email, mobile, message } = req.body;
 
-    // Basic validation
     if (!name || !email || !message) {
       return res.status(400).json({ message: 'Name, email, and message are required' });
     }
 
-    // Send email to admin
     await transporter.sendMail({
       from: SMTP_USER,
       to: ADMIN_EMAIL,
